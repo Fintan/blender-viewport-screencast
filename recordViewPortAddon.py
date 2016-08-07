@@ -14,6 +14,41 @@ bl_info = {
 
 import bpy
 import os
+from bpy.props import *
+ 
+#
+#    Store properties in the active scene
+#
+def initSceneProperties(scn):
+    # bpy.types.Scene.MyInt = IntProperty(
+    #     name = "Integer", 
+    #     description = "Enter an integer")
+    # scn['MyInt'] = 17
+ 
+    # bpy.types.Scene.MyFloat = FloatProperty(
+    #     name = "Float", 
+    #     description = "Enter a float",
+    #     default = 33.33,
+    #     min = -100,
+    #     max = 100)
+ 
+    bpy.types.Scene.ViewContextBool = BoolProperty(
+        name = "Use 3D View", 
+        description = "True or False?")
+    scn['MyBool'] = True
+ 
+    bpy.types.Scene.ViewContextEnum = EnumProperty(
+        items = [('3D view', 'Un', 'One'), 
+                 ('Scene settings', 'Deux', 'Two')],
+        name = "Context")
+    scn['ViewContextEnum'] = 0
+ 
+    bpy.types.Scene.SaveNameStr = StringProperty(
+        name = "File name")
+    scn['SaveNameStr'] = "recording-of-viewport"
+    return
+ 
+initSceneProperties(bpy.context.scene)
 
 class FastOpenGlRecordPanel(bpy.types.Panel):
     bl_idname = "object.fast_open_gl_record_panel"
@@ -27,26 +62,14 @@ class FastOpenGlRecordPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+        scn = context.scene
         col = layout.column(align=True)
         col.operator("object.recorder", text="Record", icon='MOD_SMOOTH')
-        # col.operator("object.recorder_stop", text="Stop", icon='MOD_SMOOTH')
         col.label("(Escape to stop)")
-
-class RecorderStop(bpy.types.Operator):
-    bl_idname = "object.recorder_stop"
-    bl_label = 'Viewport Record'
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'TOOLS'
-    index = 0
-    record = True
-
-    @classmethod
-    def poll(self, context):
-        return True
-
-    def execute(self, context):
-        Recorder.record = False
-
+        layout.prop(scn, 'ViewContextBool', icon='BLENDER', toggle=True)
+        layout.prop(scn, 'ViewContextEnum')
+        layout.prop(scn, 'SaveNameStr')
+        # col.operator("object.recorder_stop", text="Stop", icon='MOD_SMOOTH')
 
 
 class Recorder(bpy.types.Operator):
@@ -81,7 +104,8 @@ class Recorder(bpy.types.Operator):
 
     def cancel(self, context):
         wm = context.window_manager
-        cmd = '~/dev/py/recordViewport/ffmpeg -framerate 25 -i '+bpy.context.scene.render.filepath+'recorder-viewport-pic%d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p '+bpy.context.scene.render.filepath+'output.mp4'
+        cmd = 'ffmpeg -framerate 25 -i '+bpy.context.scene.render.filepath+'recorder-viewport-pic%d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p '+bpy.context.scene.render.filepath+'output.mp4'
+        # cmd = '~/dev/py/recordViewport/ffmpeg -framerate 25 -i '+bpy.context.scene.render.filepath+'recorder-viewport-pic%d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p '+bpy.context.scene.render.filepath+'output.mp4'
         os.system(cmd)
         wm.event_timer_remove(self._timer)
 
